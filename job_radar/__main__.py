@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
+from collections import Counter
 from datetime import date
 from pathlib import Path
 
@@ -13,6 +15,20 @@ from .scoring import rank
 from .sources import collect
 
 log = logging.getLogger("job_radar")
+
+
+def _annotate(found, ranked, new, errors, dry_run: bool) -> None:
+    """Short run summary as GitHub Actions annotations (visible in the run page and via the API)."""
+    if not os.getenv("GITHUB_ACTIONS"):
+        return
+    per_source = Counter(j.source for j in found)
+    by_source = ", ".join(f"{k} {v}" for k, v in per_source.most_common())
+    print(f"::notice title=Summary::found {len(found)} ({by_source}) · relevant {len(ranked)} · new {len(new)}")
+    for err in errors[:10]:
+        print(f"::warning title=Source::{err[:180]}")
+    if dry_run:
+        for j in new[:15]:
+            print(f"::notice title=Top::{j.score:g} [{j.category}] {j.title} — {j.company} ({j.location}) · {j.source}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -35,6 +51,8 @@ def main(argv: list[str] | None = None) -> int:
     seen = state.load(state_path)
     new = [j for j in ranked if j.key not in seen][: cfg.get("max_results", 30)]
     log.info("found %d, relevant %d, new %d, source warnings %d", len(found), len(ranked), len(new), len(errors))
+
+    _annotate(found, ranked, new, errors, args.dry_run)
 
     html = report.build_html(new, len(found), errors)
     text = report.build_text(new)
