@@ -62,9 +62,9 @@ remotive:
   enabled: true
   categories: [devops, software-dev]
 
-# Adzuna (needs free ADZUNA_APP_ID and ADZUNA_APP_KEY secrets; skipped if missing).
+# Adzuna (paid API since 2026: £8/month; needs ADZUNA_APP_ID and ADZUNA_APP_KEY secrets).
 adzuna:
-  enabled: true
+  enabled: false
   countries: [es, gb, ch, us]
   terms: [devops junior, cloud engineer junior, devops intern]
 

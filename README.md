@@ -10,7 +10,7 @@ Remotive API ───────────────┼─▶ filter & sco
 Adzuna API ─────────────────┘        (rules)          (state branch)
 ```
 
-- **Sources:** LinkedIn and Indeed public listings through [JobSpy](https://github.com/speedyapply/JobSpy), the [Remotive](https://remotive.com) remote jobs API and the [Adzuna](https://developer.adzuna.com) API (optional, free key).
+- **Sources:** LinkedIn and Indeed public listings through [JobSpy](https://github.com/speedyapply/JobSpy), the [Remotive](https://remotive.com) remote jobs API and the [Adzuna](https://developer.adzuna.com) API (optional and disabled by default: it now requires a paid plan).
 - **Scoring:** rule-based and explainable. Role keywords in the title (DevOps, cloud, SRE, platform…), level (internship > junior), matching skills, and penalties for senior titles, years of experience or languages I don't speak. Full-stack and frontend roles are filtered out.
 - **Skill gaps:** each offer lists the technologies it asks for that aren't on my CV yet.
 - **No repeats:** offers already emailed are stored as hashes on the `state` branch.
@@ -27,7 +27,7 @@ Everything is configured in [`config.yaml`](config.yaml): search terms, location
    | `GMAIL_USER` | yes | Gmail address that sends the email |
    | `GMAIL_APP_PASSWORD` | yes | A Gmail [App Password](https://myaccount.google.com/apppasswords) (needs 2-Step Verification) |
    | `MAIL_TO` | no | Recipient, if different from `GMAIL_USER` |
-   | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | no | Free keys from developer.adzuna.com; Adzuna is skipped without them |
+   | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | no | Only if you enable Adzuna in `config.yaml` (paid plan) |
 
 2. Run *Actions → Weekly job search → Run workflow* once with **dry run** enabled and download the `report` artifact to check the results.
 3. Run it again without dry run to receive the first email. After that it runs every Monday.
