@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import smtplib
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -31,15 +32,46 @@ def _annotate(found, ranked, new, errors, dry_run: bool) -> None:
             print(f"::notice title=Top::{j.score:g} [{j.category}] {j.title} — {j.company} ({j.location}) · {j.source}")
 
 
+def _fail(message: str) -> None:
+    log.error(message)
+    if os.getenv("GITHUB_ACTIONS"):
+        print(f"::error title=job-radar::{message}")
+
+
+def _send(subject: str, html: str, text: str) -> bool:
+    try:
+        mailer.send(subject, html, text)
+        return True
+    except smtplib.SMTPAuthenticationError as exc:
+        _fail(f"Gmail rejected the login (SMTP {exc.smtp_code}). Check GMAIL_USER and that GMAIL_APP_PASSWORD is an App Password.")
+    except Exception as exc:  # never print the message itself: it could echo credentials
+        _fail(f"Could not send the email: {type(exc).__name__}")
+    return False
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Weekly cloud/DevOps job search")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--state", default=".state/seen.json", help="offers already sent")
     parser.add_argument("--dry-run", action="store_true", help="write report.html instead of sending the email")
     parser.add_argument("--sources", help="comma-separated subset: jobspy,remotive,adzuna")
+    parser.add_argument("--test-email", action="store_true", help="only send a short test email")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
+
+    # Check the email settings before spending 15 minutes searching.
+    if not args.dry_run:
+        missing = mailer.missing_settings()
+        if missing:
+            _fail(f"Missing repository secrets: {', '.join(missing)}")
+            return 1
+    if args.test_email:
+        return 0 if _send(
+            "job-radar · email de prueba",
+            "<p>✅ job-radar puede enviarte correos. El informe semanal llegará los lunes.</p>",
+            "job-radar puede enviarte correos.",
+        ) else 1
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     only = set(args.sources.split(",")) if args.sources else None
 
@@ -64,7 +96,8 @@ def main(argv: list[str] | None = None) -> int:
         log.info("dry run: report written to report.html, nothing sent")
         return 0
 
-    mailer.send(subject, html, text)
+    if not _send(subject, html, text):
+        return 1
     today = date.today().isoformat()
     seen.update({j.key: today for j in new})
     state.save(state_path, seen)

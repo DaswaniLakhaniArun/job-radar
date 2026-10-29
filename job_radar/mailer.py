@@ -7,10 +7,18 @@ import ssl
 from email.message import EmailMessage
 
 
+REQUIRED = ("GMAIL_USER", "GMAIL_APP_PASSWORD")
+
+
+def missing_settings() -> list[str]:
+    return [name for name in REQUIRED if not os.getenv(name, "").strip()]
+
+
 def send(subject: str, html: str, text: str) -> None:
-    user = os.environ["GMAIL_USER"]
-    password = os.environ["GMAIL_APP_PASSWORD"]
-    to = os.getenv("MAIL_TO") or user
+    user = os.environ["GMAIL_USER"].strip()
+    # Google shows App Passwords in groups of four ("abcd efgh ..."); spaces are not part of it
+    password = os.environ["GMAIL_APP_PASSWORD"].replace(" ", "").strip()
+    to = (os.getenv("MAIL_TO") or "").strip() or user
 
     msg = EmailMessage()
     msg["Subject"] = subject

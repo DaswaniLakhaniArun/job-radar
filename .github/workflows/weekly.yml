@@ -5,10 +5,11 @@ on:
     - cron: "17 7 * * 1" # Mondays 07:17 UTC (07:17/08:17 in the Canary Islands)
   workflow_dispatch:
     inputs:
-      dry_run:
-        description: "Dry run: build the report as an artifact instead of emailing it"
-        type: boolean
-        default: false
+      mode:
+        description: "search = normal run · dry-run = report as artifact, no email · test-email = only check the email settings"
+        type: choice
+        options: [search, dry-run, test-email]
+        default: search
 
 permissions:
   contents: write # only used to update the `state` branch
@@ -30,6 +31,10 @@ jobs:
           cache: pip
 
       - run: pip install -r requirements.txt
+        if: ${{ inputs.mode != 'test-email' }}
+
+      - run: pip install PyYAML requests
+        if: ${{ inputs.mode == 'test-email' }}
 
       # Offers already emailed are remembered as hashes on the `state` branch.
       - name: Restore state
@@ -47,14 +52,14 @@ jobs:
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
         run: |
-          if [ "${{ inputs.dry_run }}" = "true" ]; then
-            python -m job_radar --dry-run
-          else
-            python -m job_radar
-          fi
+          case "${{ inputs.mode || 'search' }}" in
+            dry-run)    python -m job_radar --dry-run ;;
+            test-email) python -m job_radar --test-email ;;
+            *)          python -m job_radar ;;
+          esac
 
       - name: Upload dry-run report
-        if: ${{ inputs.dry_run }}
+        if: ${{ inputs.mode == 'dry-run' }}
         uses: actions/upload-artifact@v6
         with:
           name: report
@@ -62,7 +67,7 @@ jobs:
           retention-days: 3
 
       - name: Save state
-        if: ${{ !inputs.dry_run }}
+        if: ${{ inputs.mode != 'dry-run' && inputs.mode != 'test-email' }}
         run: |
           cp .state/seen.json /tmp/seen.json
           git config user.name "github-actions[bot]"

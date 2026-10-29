@@ -29,8 +29,8 @@ Everything is configured in [`config.yaml`](config.yaml): search terms, location
    | `MAIL_TO` | no | Recipient, if different from `GMAIL_USER` |
    | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | no | Only if you enable Adzuna in `config.yaml` (paid plan) |
 
-2. Run *Actions → Weekly job search → Run workflow* once with **dry run** enabled and download the `report` artifact to check the results.
-3. Run it again without dry run to receive the first email. After that it runs every Monday.
+2. Run *Actions → Weekly job search → Run workflow* with mode **test-email** to check the email settings (takes a few seconds).
+3. Optionally run it with **dry-run** and download the `report` artifact, then with **search** to receive the first email. After that it runs every Monday.
 
 ## Run locally
 
