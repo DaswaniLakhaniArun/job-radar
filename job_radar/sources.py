@@ -89,7 +89,8 @@ def jobspy_jobs(cfg: dict, errors: list[str]) -> Iterable[Job]:
                         salary=salary or None,
                         search_label=label,
                     )
-                time.sleep(random.uniform(2, 5))  # be polite to the job boards
+                # be polite: LinkedIn starts answering 429 if searches come too fast
+                time.sleep(random.uniform(8, 14) if site == "linkedin" else random.uniform(2, 4))
 
 
 # -------------------------------------------------------------- Remotive ---

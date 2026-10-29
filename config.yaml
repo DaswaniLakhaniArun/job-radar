@@ -12,13 +12,13 @@ min_score: 4
 
 # Searches run on LinkedIn and Indeed (through JobSpy).
 searches:
+  # Kept short on purpose: LinkedIn rate-limits (HTTP 429) after ~40 searches in a row.
   terms:
     - devops intern
-    - cloud engineer intern
+    - cloud intern
     - devops junior
     - cloud engineer junior
-    - site reliability engineer junior
-    - platform engineer junior
+    - sre junior
 
   # Each location is searched with every term.
   # indeed_country uses JobSpy's country names; leave it out to skip Indeed.
@@ -54,9 +54,8 @@ searches:
 
 # Spanish-language searches (only for Spanish locations).
 spanish_terms:
+  - prácticas cloud
   - prácticas devops
-  - becario cloud
-  - devops junior
 
 # Remotive (remote jobs API, no key needed).
 remotive:
