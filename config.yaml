@@ -1,0 +1,192 @@
+# job-radar configuration
+# Everything here is public. Personal data (email, API keys) lives in GitHub Secrets.
+
+# How far back to look for new postings, in hours (one week).
+hours_old: 168
+
+# Maximum number of offers in the weekly email.
+max_results: 30
+
+# Minimum score an offer needs to appear in the email.
+min_score: 4
+
+# Searches run on LinkedIn and Indeed (through JobSpy).
+searches:
+  terms:
+    - devops intern
+    - cloud engineer intern
+    - devops junior
+    - cloud engineer junior
+    - site reliability engineer junior
+    - platform engineer junior
+
+  # Each location is searched with every term.
+  # indeed_country uses JobSpy's country names; leave it out to skip Indeed.
+  locations:
+    - name: Spain (remote)
+      query: Spain
+      remote: true
+      indeed_country: spain
+    - name: Madrid
+      query: Madrid, Spain
+      indeed_country: spain
+    - name: Barcelona
+      query: Barcelona, Spain
+      indeed_country: spain
+    - name: London
+      query: London, United Kingdom
+      indeed_country: uk
+    - name: Zurich
+      query: Zurich, Switzerland
+      indeed_country: switzerland
+    - name: Dubai
+      query: Dubai, United Arab Emirates
+      indeed_country: united arab emirates
+    - name: United States (remote)
+      query: United States
+      remote: true
+      indeed_country: usa
+
+  sites: [linkedin, indeed]
+  results_per_search: 20
+  # Fetching LinkedIn descriptions improves scoring but makes many more requests.
+  linkedin_descriptions: false
+
+# Spanish-language searches (only for Spanish locations).
+spanish_terms:
+  - prácticas devops
+  - becario cloud
+  - devops junior
+
+# Remotive (remote jobs API, no key needed).
+remotive:
+  enabled: true
+  categories: [devops, software-dev]
+
+# Adzuna (needs free ADZUNA_APP_ID and ADZUNA_APP_KEY secrets; skipped if missing).
+adzuna:
+  enabled: true
+  countries: [es, gb, ch, us]
+  terms: [devops junior, cloud engineer junior, devops intern]
+
+# Scoring rules (all matching is case-insensitive).
+scoring:
+  # The title must contain at least one of these to be considered.
+  role_keywords:
+    - devops
+    - dev ops
+    - cloud
+    - sre
+    - site reliability
+    - platform engineer
+    - infrastructure
+    - infraestructura
+    - kubernetes
+    - aws
+    - azure
+    - gcp
+    - sysadmin
+    - systems engineer
+    - ci/cd
+    - release engineer
+    - build engineer
+
+  # Offers with these in the title are dropped.
+  exclude_title:
+    - senior
+    - sr.
+    - sr
+    - lead
+    - principal
+    - staff
+    - manager
+    - head of
+    - director
+    - architect
+    - arquitecto
+    - full stack
+    - fullstack
+    - full-stack
+    - frontend
+    - front-end
+    - react
+    - sales
+    - account executive
+    - recruiter
+
+  internship_keywords:
+    - intern
+    - internship
+    - prácticas
+    - practicas
+    - becario
+    - becaria
+    - trainee
+    - stage
+    - werkstudent
+
+  junior_keywords:
+    - junior
+    - jr
+    - graduate
+    - entry level
+    - entry-level
+    - early career
+    - new grad
+    - associate
+
+  # Skills that add points when they appear in the title or description.
+  skills:
+    - aws
+    - azure
+    - gcp
+    - docker
+    - kubernetes
+    - terraform
+    - ansible
+    - jenkins
+    - github actions
+    - gitlab
+    - bitbucket
+    - ci/cd
+    - linux
+    - bash
+    - python
+    - prometheus
+    - grafana
+    - helm
+    - argocd
+    - infisical
+    - vault
+
+  # Skills already on Arun's CV; the email lists the job's skills that are not here.
+  cv_skills:
+    - aws
+    - azure
+    - docker
+    - kubernetes
+    - terraform
+    - ansible
+    - jenkins
+    - ci/cd
+    - bitbucket
+    - git
+    - python
+    - sql
+    - prometheus
+    - grafana
+    - infisical
+    - android
+
+  # Required languages Arun doesn't speak lower the score.
+  language_penalties:
+    - german
+    - deutsch
+    - french
+    - français
+    - arabic
+    - dutch
+    - polish
+
+  # Years of experience above this lower the score.
+  max_years_experience: 2

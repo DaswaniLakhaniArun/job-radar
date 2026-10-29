@@ -1,0 +1,75 @@
+name: Weekly job search
+
+on:
+  schedule:
+    - cron: "17 7 * * 1" # Mondays 07:17 UTC (07:17/08:17 in the Canary Islands)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Dry run: build the report as an artifact instead of emailing it"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write # only used to update the `state` branch
+
+concurrency:
+  group: weekly-job-search
+  cancel-in-progress: false
+
+jobs:
+  search:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      # Offers already emailed are remembered as hashes on the `state` branch.
+      - name: Restore state
+        run: |
+          mkdir -p .state
+          if git fetch --depth 1 origin state 2>/dev/null; then
+            git show FETCH_HEAD:seen.json > .state/seen.json || true
+          fi
+
+      - name: Search and send
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
+          ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+        run: |
+          if [ "${{ inputs.dry_run }}" = "true" ]; then
+            python -m job_radar --dry-run
+          else
+            python -m job_radar
+          fi
+
+      - name: Upload dry-run report
+        if: ${{ inputs.dry_run }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: report
+          path: report.html
+          retention-days: 3
+
+      - name: Save state
+        if: ${{ !inputs.dry_run }}
+        run: |
+          cp .state/seen.json /tmp/seen.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout --orphan state-tmp
+          git rm -rf --quiet .
+          cp /tmp/seen.json seen.json
+          git add seen.json
+          git commit --quiet -m "Update seen offers"
+          git push --force origin state-tmp:state
