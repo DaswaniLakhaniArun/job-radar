@@ -89,9 +89,25 @@ def score_job(job: Job, rules: dict) -> Job | None:
             score += 1
             reasons.append("remoto")
 
+    weight, region = location_weight(job.location, rules.get("location_weights"))
+    if weight != 1.0:
+        score *= weight
+        reasons.append(f"ubicación {region} ×{weight:g}")
+
     job.score = round(score, 1)
     job.reasons = reasons
     return job
+
+
+def location_weight(location: str, cfg: dict | None) -> tuple[float, str]:
+    """Multiplier for where the job is (first matching region wins)."""
+    if not cfg:
+        return 1.0, ""
+    loc = normalise(location)
+    for region in cfg.get("regions", []):
+        if _found(region["match"], loc):
+            return float(region["weight"]), region["name"]
+    return float(cfg.get("default", 1.0)), "sin identificar"
 
 
 def rank(jobs: list[Job], rules: dict, min_score: float) -> list[Job]:

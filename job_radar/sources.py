@@ -60,7 +60,7 @@ def jobspy_jobs(cfg: dict, errors: list[str]) -> Iterable[Job]:
     s = cfg["searches"]
     for loc in s["locations"]:
         spanish = loc.get("indeed_country") == "spain"
-        terms = list(s["terms"]) + (list(cfg.get("spanish_terms", [])) if spanish else [])
+        terms = list(loc.get("terms") or s["terms"]) + (list(cfg.get("spanish_terms", [])) if spanish else [])
         for term in terms:
             for site in s["sites"]:
                 if site == "indeed" and not loc.get("indeed_country"):

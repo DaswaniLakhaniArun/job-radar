@@ -87,3 +87,12 @@ def test_state_migrates_first_version(tmp_path):
     p = tmp_path / "seen.json"
     p.write_text('{"abc": "2026-10-29"}')
     assert state.load(p) == {"sent": {"abc": "2026-10-29"}, "board": {}, "last_seen": {}}
+
+
+def test_location_weights():
+    spain = score_job(job("DevOps Intern", "AWS", location="Madrid, Spain"), RULES)
+    london = score_job(job("DevOps Intern", "AWS", location="London, United Kingdom"), RULES)
+    usa = score_job(job("DevOps Intern", "AWS", location="Austin, TX"), RULES)
+    assert spain.score > london.score > usa.score
+    assert round(london.score / spain.score, 1) == 0.7
+    assert any("Reino Unido" in r for r in london.reasons)
