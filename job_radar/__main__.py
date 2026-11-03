@@ -151,9 +151,6 @@ def main(argv: list[str] | None = None) -> int:
     _gh("notice", "Summary", f"found {len(found)} ({', '.join(f'{k} {v}' for k, v in per_source.most_common())}) · "
         f"relevant {len(ranked)} · new {len(new)} · resurfaced {len(resurfaced)} · board {len(items)} · "
         f"summaries {sum(1 for j in finalists if j.ai)}/{len(finalists)}")
-    for e in errors[:10]:
-        _gh("warning", "Source", e)
-
     # Board: add the new offers and tidy up
     if b and not args.dry_run:
         for job in new:
@@ -166,6 +163,12 @@ def main(argv: list[str] | None = None) -> int:
                 b.archive(it.id)
             except Exception as exc:
                 errors.append(f"tablero · no se pudo archivar: {type(exc).__name__}")
+
+    added = sum(1 for j in new if j.board_url)
+    if b and not args.dry_run:
+        _gh("notice", "Board", f"{added}/{len(new)} cards added, {len(p.archive)} archived")
+    for e in errors[:10]:
+        _gh("warning", "Source", e)
 
     extras = report.Extras(
         board_url=b.url if b else None,
