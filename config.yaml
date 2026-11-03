@@ -33,39 +33,20 @@ searches:
     - name: Barcelona
       query: Barcelona, Spain
       indeed_country: spain
-    # Outside Spain only two terms per city, to stay under LinkedIn's rate limit.
     - name: London
       query: London, United Kingdom
       indeed_country: uk
-      terms: &abroad_terms [devops intern, cloud engineer junior]
-    - name: Dublin
-      query: Dublin, Ireland
-      indeed_country: ireland
-      terms: *abroad_terms
-    - name: Amsterdam
-      query: Amsterdam, Netherlands
-      indeed_country: netherlands
-      terms: *abroad_terms
-    - name: Berlin
-      query: Berlin, Germany
-      indeed_country: germany
-      terms: *abroad_terms
-    - name: Lisbon
-      query: Lisbon, Portugal
-      indeed_country: portugal
-      terms: *abroad_terms
     - name: Zurich
       query: Zurich, Switzerland
       indeed_country: switzerland
-      terms: *abroad_terms
     - name: Dubai
       query: Dubai, United Arab Emirates
       indeed_country: united arab emirates
-      terms: *abroad_terms
+    # Only two terms here, to stay under LinkedIn's rate limit.
     - name: Europe (remote)
       query: Europe
       remote: true
-      terms: *abroad_terms
+      terms: [devops intern, cloud engineer junior]
 
   sites: [linkedin, indeed]
   results_per_search: 20
@@ -171,16 +152,15 @@ scoring:
   # location (accents ignored). Lower = harder for Arun (visa, language, distance).
   # Offers whose location matches nothing get `default`.
   location_weights:
-    default: 0.8
+    default: 0.7
     regions:
       - {name: España, weight: 1.0, match: [spain, españa, madrid, barcelona, valencia, sevilla, malaga, bilbao, tenerife, canarias, gran canaria, zaragoza]}
-      - {name: Irlanda, weight: 0.9, match: [ireland, irlanda, dublin]}
-      - {name: Europa, weight: 0.9, match: [europe, emea, eu, eea, portugal, lisbon, lisboa, porto, netherlands, amsterdam, germany, berlin, munich, france, paris, italy, milan, bergamo, belgium, nordics, sweden, denmark, finland]}
-      - {name: Suiza, weight: 0.8, match: [switzerland, suiza, zurich, geneva, basel, lausanne]}
-      - {name: Emiratos, weight: 0.8, match: [dubai, abu dhabi, united arab emirates, uae]}
-      - {name: Reino Unido, weight: 0.7, match: [london, united kingdom, uk, england, scotland, manchester]}
+      - {name: Europa, weight: 0.7, match: [europe, emea, eu, eea, portugal, lisbon, lisboa, netherlands, amsterdam, germany, berlin, ireland, dublin, france, paris, italy, milan, bergamo, belgium, nordics, sweden, denmark, finland]}
+      - {name: Suiza, weight: 1.0, match: [switzerland, suiza, zurich, geneva, basel, lausanne]}
+      - {name: Emiratos, weight: 0.95, match: [dubai, abu dhabi, united arab emirates, uae]}
+      - {name: Reino Unido, weight: 0.85, match: [london, united kingdom, uk, england, scotland, manchester]}
       - {name: EE. UU., weight: 0.3, match: [usa, united states, us, new york, san francisco, seattle, austin, boston]}
-      - {name: Remoto sin región, weight: 0.8, match: [remote, worldwide, anywhere, global, international]}
+      - {name: Remoto sin región, weight: 0.7, match: [remote, worldwide, anywhere, global, international]}
 
   # The title must contain at least one of these to be considered.
   role_keywords:
