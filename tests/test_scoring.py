@@ -78,6 +78,12 @@ def test_report_and_state(tmp_path):
     html = report.build_html([j], total_found=10, errors=["indeed: blocked"], today=date(2026, 11, 2))
     assert "DevOps Intern" in html and "Prácticas (1)" in html and "blocked" in html
     p = tmp_path / "seen.json"
-    state.save(p, {j.key: date.today().isoformat(), "old": "2000-01-01"})
-    loaded = state.load(p)
+    state.save(p, {"sent": {j.key: date.today().isoformat(), "old": "2000-01-01"}})
+    loaded = state.load(p)["sent"]
     assert j.key in loaded and "old" not in loaded
+
+
+def test_state_migrates_first_version(tmp_path):
+    p = tmp_path / "seen.json"
+    p.write_text('{"abc": "2026-10-29"}')
+    assert state.load(p) == {"sent": {"abc": "2026-10-29"}, "board": {}, "last_seen": {}}

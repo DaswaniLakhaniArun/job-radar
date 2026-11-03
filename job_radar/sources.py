@@ -39,6 +39,19 @@ def _as_date(value) -> date | None:
         return None
 
 
+def _float(value) -> float | None:
+    try:
+        v = float(_clean(value))
+        return v if v > 0 else None
+    except ValueError:
+        return None
+
+
+def _int(value) -> int | None:
+    v = _float(value)
+    return int(v) if v else None
+
+
 # ---------------------------------------------------------------- JobSpy ---
 
 def jobspy_jobs(cfg: dict, errors: list[str]) -> Iterable[Job]:
@@ -88,6 +101,11 @@ def jobspy_jobs(cfg: dict, errors: list[str]) -> Iterable[Job]:
                         is_remote=bool(row.get("is_remote")) if _clean(row.get("is_remote")) else loc.get("remote"),
                         salary=salary or None,
                         search_label=label,
+                        company_rating=_float(row.get("company_rating")),
+                        company_reviews=_int(row.get("company_reviews_count")),
+                        company_size=_clean(row.get("company_num_employees")) or None,
+                        company_industry=_clean(row.get("company_industry")) or None,
+                        job_level=_clean(row.get("job_level")) or None,
                     )
                 # be polite: LinkedIn starts answering 429 if searches come too fast
                 time.sleep(random.uniform(8, 14) if site == "linkedin" else random.uniform(2, 4))

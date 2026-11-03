@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "search = normal run · dry-run = report as artifact, no email · test-email = only check the email settings"
+        description: "search = normal run · dry-run = report as artifact, no email or board changes · check-setup = check email, Gemini and the board (≈1 min)"
         type: choice
-        options: [search, dry-run, test-email]
+        options: [search, dry-run, check-setup]
         default: search
 
 permissions:
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   search:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v5
 
@@ -31,10 +31,10 @@ jobs:
           cache: pip
 
       - run: pip install -r requirements.txt
-        if: ${{ inputs.mode != 'test-email' }}
+        if: ${{ inputs.mode != 'check-setup' }}
 
       - run: pip install PyYAML requests
-        if: ${{ inputs.mode == 'test-email' }}
+        if: ${{ inputs.mode == 'check-setup' }}
 
       # Offers already emailed are remembered as hashes on the `state` branch.
       - name: Restore state
@@ -51,10 +51,12 @@ jobs:
           MAIL_TO: ${{ secrets.MAIL_TO }}
           ADZUNA_APP_ID: ${{ secrets.ADZUNA_APP_ID }}
           ADZUNA_APP_KEY: ${{ secrets.ADZUNA_APP_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PROJECT_TOKEN: ${{ secrets.PROJECT_TOKEN }}
         run: |
           case "${{ inputs.mode || 'search' }}" in
             dry-run)    python -m job_radar --dry-run ;;
-            test-email) python -m job_radar --test-email ;;
+            check-setup) python -m job_radar --check-setup ;;
             *)          python -m job_radar ;;
           esac
 
@@ -67,7 +69,7 @@ jobs:
           retention-days: 3
 
       - name: Save state
-        if: ${{ inputs.mode != 'dry-run' && inputs.mode != 'test-email' }}
+        if: ${{ inputs.mode != 'dry-run' && inputs.mode != 'check-setup' }}
         run: |
           cp .state/seen.json /tmp/seen.json
           git config user.name "github-actions[bot]"

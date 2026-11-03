@@ -68,6 +68,67 @@ adzuna:
   countries: [es, gb, ch, us]
   terms: [devops junior, cloud engineer junior, devops intern]
 
+# Extra information for the offers that make it into the email.
+enrich:
+  linkedin_descriptions: true   # fetch the description of LinkedIn finalists (few requests)
+  max_descriptions: 40
+
+# Summaries and assessment with Gemini (free tier). Needs the GEMINI_API_KEY secret.
+ai:
+  enabled: true
+  # Tried in order; the "-latest" aliases follow Google's current models.
+  models: [gemini-flash-lite-latest, gemini-flash-latest]
+  batch_size: 5
+  pause_seconds: 5
+  profile: >-
+    Ingeniero informático recién graduado (2026), desarrollador de software en una empresa SaaS,
+    estudiando un máster en Cloud & DevOps. Busca prácticas o primer empleo en cloud, DevOps, SRE o
+    plataforma. Experiencia con CI/CD (Bitbucket Pipelines), publicación de apps, Git y gestión de
+    secretos; formándose en AWS, Azure, Docker, Kubernetes y Terraform. Lenguajes fuertes: SQL, C y C++.
+    No quiere puestos full-stack ni frontend. Idiomas: español nativo, inglés B2, italiano B1.
+
+# Private GitHub Projects board (needs the PROJECT_TOKEN secret).
+board:
+  enabled: true
+  title: job-radar
+  reapply_after_days: 90       # a rejected offer can come back after this many days if it is republished
+  follow_up_after_days: 14     # remind to follow up an application with no changes
+  stale_after_days: 21         # "Me interesa" offers not seen again for this long may be closed
+  archive_new_after_days: 21   # "Nueva" cards left untouched are archived
+
+# Approximate ranges shown only when the offer doesn't publish a salary (gross).
+# Orientative figures for 2026, to be refined; they are always labelled "estimado" in the email.
+salary_estimates:
+  regions:
+    - name: Madrid/Barcelona
+      match: [madrid, barcelona]
+      internship: 800–1.200 €/mes
+      junior: 26.000–34.000 €/año
+    - name: España
+      match: [spain, españa, valencia, sevilla, malaga, bilbao, tenerife, canarias, gran canaria]
+      internship: 600–1.000 €/mes
+      junior: 24.000–30.000 €/año
+    - name: Reino Unido
+      match: [london, united kingdom, uk, england, scotland, manchester]
+      internship: £2.000–2.600/mes
+      junior: £35.000–45.000/año
+    - name: Suiza
+      match: [zurich, zürich, geneva, genève, basel, lausanne, switzerland]
+      internship: CHF 2.500–4.000/mes
+      junior: CHF 85.000–100.000/año
+    - name: Emiratos
+      match: [dubai, abu dhabi, united arab emirates, uae]
+      internship: AED 3.000–6.000/mes
+      junior: AED 10.000–15.000/mes (sin impuesto sobre la renta)
+    - name: EE. UU.
+      match: [usa, united states, new york, san francisco, seattle, austin, boston]
+      internship: $4.500–8.000/mes
+      junior: $80.000–110.000/año
+    - name: Europa (remoto)
+      match: [europe, emea, eu]
+      internship: 1.000–1.800 €/mes
+      junior: 30.000–45.000 €/año
+
 # Scoring rules (all matching is case-insensitive).
 scoring:
   # The title must contain at least one of these to be considered.
