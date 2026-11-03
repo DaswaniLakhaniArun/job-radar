@@ -47,6 +47,11 @@ searches:
       query: Europe
       remote: true
       terms: [devops intern, cloud engineer junior]
+    - name: United States (remote)
+      query: United States
+      remote: true
+      indeed_country: usa
+      terms: [devops intern, cloud engineer junior]
 
   sites: [linkedin, indeed]
   results_per_search: 20
@@ -159,7 +164,7 @@ scoring:
       - {name: Suiza, weight: 1.0, match: [switzerland, suiza, zurich, geneva, basel, lausanne]}
       - {name: Emiratos, weight: 0.95, match: [dubai, abu dhabi, united arab emirates, uae]}
       - {name: Reino Unido, weight: 0.85, match: [london, united kingdom, uk, england, scotland, manchester]}
-      - {name: EE. UU., weight: 0.3, match: [usa, united states, us, new york, san francisco, seattle, austin, boston]}
+      - {name: EE. UU., weight: 0.5, match: [usa, united states, us, new york, san francisco, seattle, austin, boston]}
       - {name: Remoto sin región, weight: 0.7, match: [remote, worldwide, anywhere, global, international]}
 
   # The title must contain at least one of these to be considered.
