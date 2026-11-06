@@ -151,6 +151,9 @@ def main(argv: list[str] | None = None) -> int:
     _gh("notice", "Summary", f"found {len(found)} ({', '.join(f'{k} {v}' for k, v in per_source.most_common())}) · "
         f"relevant {len(ranked)} · new {len(new)} · resurfaced {len(resurfaced)} · board {len(items)} · "
         f"summaries {sum(1 for j in finalists if j.ai)}/{len(finalists)}")
+    regions = Counter(next((r.split("ubicación ")[1].rsplit(" ×", 1)[0] for r in j.reasons if r.startswith("ubicación ")), "España/sin peso")
+                      for j in new)
+    _gh("notice", "Regions", " · ".join(f"{k} {v}" for k, v in regions.most_common()))
     # Board: add the new offers and tidy up
     if b and not args.dry_run:
         for job in new:

@@ -157,15 +157,15 @@ scoring:
   # location (accents ignored). Lower = harder for Arun (visa, language, distance).
   # Offers whose location matches nothing get `default`.
   location_weights:
-    default: 0.7
+    default: 0.4   # a country that is none of the above (Poland, France, Romania...)
     regions:
       - {name: España, weight: 1.0, match: [spain, españa, madrid, barcelona, valencia, sevilla, malaga, bilbao, tenerife, canarias, gran canaria, zaragoza]}
-      - {name: Europa, weight: 0.7, match: [europe, emea, eu, eea, portugal, lisbon, lisboa, netherlands, amsterdam, germany, berlin, ireland, dublin, france, paris, italy, milan, bergamo, belgium, nordics, sweden, denmark, finland]}
+      - {name: Europa remoto, weight: 0.7, match: [europe, emea, eu, eea]}
       - {name: Suiza, weight: 1.0, match: [switzerland, suiza, zurich, geneva, basel, lausanne]}
       - {name: Emiratos, weight: 0.95, match: [dubai, abu dhabi, united arab emirates, uae]}
       - {name: Reino Unido, weight: 0.85, match: [london, united kingdom, uk, england, scotland, manchester]}
       - {name: EE. UU., weight: 0.5, match: [usa, united states, us, new york, san francisco, seattle, austin, boston]}
-      - {name: Remoto sin región, weight: 0.7, match: [remote, worldwide, anywhere, global, international]}
+      - {name: Remoto sin región, weight: 0.6, match: [remote, worldwide, anywhere, global, international]}
 
   # The title must contain at least one of these to be considered.
   role_keywords:

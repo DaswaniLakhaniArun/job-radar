@@ -95,34 +95,44 @@ def enrich(jobs: list[Job], cfg: dict, profile: str, errors: list[str]) -> None:
     batch = int(cfg.get("batch_size", 5))
     by_key = {j.key: j for j in jobs}
 
+    failures = 0
     for i in range(0, len(jobs), batch):
         chunk = jobs[i:i + batch]
         prompt = PROMPT.format(profile=profile, jobs=_payload(chunk))
         done = False
-        while models and not done:
-            model = models[0]
-            try:
-                r = _call(model, key, prompt)
-                if r.status_code == 404:  # model name retired: try the next one
-                    models.pop(0)
-                    continue
-                if r.status_code == 429:
-                    time.sleep(40)
+        for model in list(models):  # next model if this one is overloaded or retired
+            for attempt in range(3):
+                try:
                     r = _call(model, key, prompt)
-                if r.status_code != 200:
-                    errors.append(f"gemini · {model}: HTTP {r.status_code}, el resto va sin resumen")
-                    return
-                for item in _parse(r):
-                    job = by_key.get(str(item.get("id", "")))
-                    if job:
-                        job.ai = item
-                done = True
-            except Exception as exc:
-                errors.append(f"gemini: {type(exc).__name__}")
+                except Exception as exc:
+                    errors.append(f"gemini: {type(exc).__name__}")
+                    r = None
+                if r is not None and r.status_code == 404:  # retired name
+                    models.remove(model)
+                    break
+                if r is not None and r.status_code == 200:
+                    for item in _parse(r):
+                        job = by_key.get(str(item.get("id", "")))
+                        if job:
+                            job.ai = item
+                    done = True
+                    break
+                if r is not None and r.status_code not in (429, 500, 502, 503, 504):
+                    errors.append(f"gemini · {model}: HTTP {r.status_code}")
+                    break
+                time.sleep((15, 40, 60)[attempt])  # overloaded or rate-limited: wait and retry
+            if done:
+                break
+        if not done:
+            failures += 1
+            if not models:
+                errors.append("gemini: ningún modelo disponible, revisa ai.models en config.yaml")
                 return
-        if not models:
-            errors.append("gemini: ningún modelo disponible, revisa ai.models en config.yaml")
-            return
+            if failures >= 3:
+                errors.append("gemini: demasiados fallos seguidos, el resto va sin resumen")
+                return
+        else:
+            failures = 0
         time.sleep(float(cfg.get("pause_seconds", 5)))
 
 
