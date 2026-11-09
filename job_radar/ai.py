@@ -111,10 +111,15 @@ def enrich(jobs: list[Job], cfg: dict, profile: str, errors: list[str]) -> None:
                     models.remove(model)
                     break
                 if r is not None and r.status_code == 200:
-                    for item in _parse(r):
-                        job = by_key.get(str(item.get("id", "")))
-                        if job:
-                            job.ai = item
+                    try:
+                        items = _parse(r)
+                    except (ValueError, KeyError, IndexError, TypeError):
+                        continue  # malformed answer: ask again (the model may answer fine next time)
+                    for item in items:
+                        if isinstance(item, dict):
+                            job = by_key.get(str(item.get("id", "")))
+                            if job:
+                                job.ai = item
                     done = True
                     break
                 if r is not None and r.status_code not in (429, 500, 502, 503, 504):

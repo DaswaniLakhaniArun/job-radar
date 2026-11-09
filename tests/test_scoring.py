@@ -96,3 +96,21 @@ def test_location_weights():
     assert spain.score > london.score > usa.score
     assert round(london.score / spain.score, 2) == 0.85
     assert any("Reino Unido" in r for r in london.reasons)
+
+
+def test_ai_survives_malformed_json(monkeypatch):
+    from job_radar import ai
+
+    class R:
+        status_code = 200
+        def json(self):
+            return {"candidates": [{"content": {"parts": [{"text": '[{"id": "x",\n  , }]'}]}}]}
+
+    monkeypatch.setattr(ai, "_call", lambda *a, **k: R())
+    monkeypatch.setattr(ai.time, "sleep", lambda s: None)
+    errors = []
+    j = job("DevOps Intern")
+    ai.enrich([j], {"enabled": True, "models": ["m"]}, "perfil", errors)  # must not raise
+    monkeypatch.setenv("GEMINI_API_KEY", "k")
+    ai.enrich([j], {"enabled": True, "models": ["m"]}, "perfil", errors)
+    assert j.ai in (None, {}, False) or not j.ai

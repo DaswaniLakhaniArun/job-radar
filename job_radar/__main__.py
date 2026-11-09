@@ -142,8 +142,11 @@ def main(argv: list[str] | None = None) -> int:
         if score_job(j, rules) is not None:
             j.notes = notes
     enrich.salary_estimates(finalists, cfg.get("salary_estimates", {}))
-    ai.enrich(finalists, cfg.get("ai", {}), cfg.get("ai", {}).get("profile", ""), errors)
-    ai.apply_to_score(finalists)
+    try:  # summaries are a bonus: they must never stop the email
+        ai.enrich(finalists, cfg.get("ai", {}), cfg.get("ai", {}).get("profile", ""), errors)
+        ai.apply_to_score(finalists)
+    except Exception as exc:
+        errors.append(f"gemini: {type(exc).__name__}, las ofertas van sin resumen")
     new.sort(key=lambda j: (j.category != "internship", -j.score))
 
     per_source = Counter(j.source for j in found)
