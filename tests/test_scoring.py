@@ -94,7 +94,7 @@ def test_location_weights():
     london = score_job(job("DevOps Intern", "AWS", location="London, United Kingdom"), RULES)
     usa = score_job(job("DevOps Intern", "AWS", location="Austin, TX"), RULES)
     assert spain.score > london.score > usa.score
-    assert round(london.score / spain.score, 2) == 0.85
+    assert abs(london.score / spain.score - 0.85) < 0.02  # scores are rounded to one decimal
     assert any("Reino Unido" in r for r in london.reasons)
 
 
