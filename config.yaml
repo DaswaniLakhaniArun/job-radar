@@ -157,11 +157,11 @@ scoring:
   # location (accents ignored). Lower = harder for Arun (visa, language, distance).
   # Offers whose location matches nothing get `default`.
   # Points added for how the job is worked. Remote is best, hybrid is very close behind and on-site
-  # (or an offer that does not say) gets nothing, so it ranks lower without being dropped.
+  # (or an offer that does not say) gets a smaller bonus, so it ranks lower without being dropped.
   work_mode_bonus:
     remote: 2.0
     hybrid: 1.8
-    onsite: 0.0
+    onsite: 1.0
 
   location_weights:
     default: 0.4   # a country that is none of the above (Poland, France, Romania...)
