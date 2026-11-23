@@ -20,7 +20,7 @@ def test_internship_ranks_as_internship():
     j = score_job(job("DevOps Intern", "AWS, Docker, Kubernetes and Terraform"), RULES)
     assert j.category == "internship"
     assert j.score >= 7
-    assert "terraform" in j.reasons[-1]
+    assert any("terraform" in r for r in j.reasons)
 
 
 def test_spanish_internship_with_accents():
@@ -114,3 +114,30 @@ def test_ai_survives_malformed_json(monkeypatch):
     monkeypatch.setenv("GEMINI_API_KEY", "k")
     ai.enrich([j], {"enabled": True, "models": ["m"]}, "perfil", errors)
     assert j.ai in (None, {}, False) or not j.ai
+
+
+def test_work_mode_remote_hybrid_onsite_order():
+    desc = "AWS, Docker and Terraform"
+    remote = score_job(job("Junior DevOps Engineer", desc, location="Madrid, Spain", is_remote=True), RULES)
+    hybrid = score_job(job("Junior DevOps Engineer (Hybrid)", desc, location="Madrid, Spain"), RULES)
+    onsite = score_job(job("Junior DevOps Engineer", desc, location="Madrid, Spain"), RULES)
+    assert remote.work_mode == "remote" and hybrid.work_mode == "hybrid" and onsite.work_mode == "onsite"
+    assert remote.score > hybrid.score > onsite.score
+    assert remote.score - hybrid.score < hybrid.score - onsite.score  # hybrid is much closer to remote
+
+
+def test_hybrid_cloud_technology_is_not_a_work_mode():
+    j = score_job(job("Cloud Engineer Junior", "Experience with hybrid cloud and multi-cloud"), RULES)
+    assert j.work_mode == "onsite"
+
+
+def test_work_mode_from_description_phrases():
+    assert score_job(job("Cloud Intern", "This is a hybrid role, 3 days per week in the office"), RULES).work_mode == "hybrid"
+    assert score_job(job("Cloud Intern", "Fully remote position"), RULES).work_mode == "remote"
+    assert score_job(job("Prácticas Cloud", "Modalidad híbrida en Madrid"), RULES).work_mode == "hybrid"
+    assert score_job(job("Prácticas Cloud", "Trabajo en remoto"), RULES).work_mode == "remote"
+
+
+def test_onsite_offers_are_not_dropped():
+    j = score_job(job("Junior DevOps Engineer", "AWS, Docker", location="Barcelona"), RULES)
+    assert j is not None and j.score >= 4

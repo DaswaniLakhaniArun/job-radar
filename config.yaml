@@ -156,16 +156,23 @@ scoring:
   # The score is multiplied by the weight of the first entry whose words appear in the offer's
   # location (accents ignored). Lower = harder for Arun (visa, language, distance).
   # Offers whose location matches nothing get `default`.
+  # Points added for how the job is worked. Remote is best, hybrid is very close behind and on-site
+  # (or an offer that does not say) gets nothing, so it ranks lower without being dropped.
+  work_mode_bonus:
+    remote: 2.0
+    hybrid: 1.8
+    onsite: 0.0
+
   location_weights:
     default: 0.4   # a country that is none of the above (Poland, France, Romania...)
     regions:
       - {name: España, weight: 1.0, match: [spain, españa, madrid, barcelona, valencia, sevilla, malaga, bilbao, tenerife, canarias, gran canaria, zaragoza]}
-      - {name: Europa remoto, weight: 0.7, match: [europe, emea, eu, eea]}
+      - {name: Europa remoto, weight: 0.9, match: [europe, emea, eu, eea]}
       - {name: Suiza, weight: 1.0, match: [switzerland, suiza, zurich, geneva, basel, lausanne]}
       - {name: Emiratos, weight: 0.95, match: [dubai, abu dhabi, united arab emirates, uae]}
       - {name: Reino Unido, weight: 0.85, match: [london, united kingdom, uk, england, scotland, manchester]}
       - {name: EE. UU., weight: 0.5, match: [usa, united states, us, new york, san francisco, seattle, austin, boston]}
-      - {name: Remoto sin región, weight: 0.6, match: [remote, worldwide, anywhere, global, international]}
+      - {name: Remoto sin región, weight: 0.85, match: [remote, worldwide, anywhere, global, international]}
 
   # The title must contain at least one of these to be considered.
   role_keywords:

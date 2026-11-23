@@ -12,6 +12,39 @@ REMOTE_OK_REGIONS = (
 )
 
 
+# Words that say how the offer is worked. "hybrid cloud" is a technology, not a work mode, so in the
+# description only phrases about the job itself count; in the title or location any mention counts.
+_HYBRID_WORD = re.compile(r"(?<![a-z0-9])(hybrid|hibrido|hibrida|hibrid)(?![a-z0-9])")
+_HYBRID_PHRASE = re.compile(
+    r"hybrid (work|working|role|position|model|schedule|setup|arrangement|mode|environment)"
+    r"|(work|working|role|position|job) (is |will be )?hybrid"
+    r"|(trabajo|modalidad|modelo|puesto|jornada|regimen|esquema) (hibrid[oa])"
+    r"|hibrid[oa] (\(|en |con |de )"
+    r"|\d\s*(days?|dias?)\s*(a|per|/|por)\s*(week|semana)\s*(in|at|en)?\s*(the )?(office|oficina)"
+)
+_REMOTE_WORD = re.compile(r"(?<![a-z0-9])(remote|remoto|remota|teletrabajo|telework|teleworking|wfh)(?![a-z0-9])")
+_REMOTE_PHRASE = re.compile(
+    r"(fully|100%|100 %|full|totally|completamente) (remote|remoto)|remote[- ]first|work(ing)? remotely"
+    r"|remote (position|role|job|work|opportunity|only)|work from home|teletrabajo|trabajo (en )?remoto"
+    r"|(puesto|modalidad|posicion) (en )?remot[oa]"
+)
+
+
+def work_mode(job: Job) -> str:
+    """'remote', 'hybrid' or 'onsite' (also used when the offer does not say)."""
+    head = normalise(f"{job.title} {job.location}")
+    desc = normalise(job.description)
+    if _HYBRID_WORD.search(head):
+        return "hybrid"
+    if job.is_remote or _REMOTE_WORD.search(head):
+        return "remote"
+    if _HYBRID_PHRASE.search(desc):
+        return "hybrid"
+    if _REMOTE_PHRASE.search(desc):
+        return "remote"
+    return "onsite"
+
+
 @lru_cache(maxsize=None)
 def _pattern(keyword: str) -> re.Pattern:
     # whole-word match: "sr" must not match "sre", "lead" must not match "leading"
@@ -80,14 +113,19 @@ def score_job(job: Job, rules: dict) -> Job | None:
         score -= 2
         reasons.append("idioma requerido: " + ", ".join(langs))
 
+    mode = work_mode(job)
+    job.work_mode = mode
     if job.is_remote:
         loc = normalise(job.location)
         if job.source == "remotive" and loc and not any(r in loc for r in REMOTE_OK_REGIONS):
             score -= 3
             reasons.append(f"remoto solo para: {job.location}")
-        else:
-            score += 1
-            reasons.append("remoto")
+            mode = ""  # not really open to Arun: no remote bonus
+    bonus = float(rules.get("work_mode_bonus", {}).get(mode, 0)) if mode else 0.0
+    if bonus:
+        score += bonus
+    if mode:
+        reasons.append({"remote": "remoto", "hybrid": "híbrido", "onsite": "presencial (no indica remoto ni híbrido)"}[mode])
 
     weight, region = location_weight(job.location, rules.get("location_weights"))
     if weight != 1.0:
