@@ -98,6 +98,10 @@ def board_dump(cfg: dict, path: str) -> int:
         lines += [it.body.split("### Notas")[0].strip(), ""]
     Path(path).write_text("\n".join(lines), encoding="utf-8")
     log.info("board dump: %d cards written to %s", len(items), path)
+    if os.getenv("GITHUB_ACTIONS"):  # also in the run log, which can be read through the API
+        print("::group::board dump")
+        print("\n".join(lines))
+        print("::endgroup::")
     return 0
 
 
