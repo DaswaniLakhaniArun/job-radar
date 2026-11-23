@@ -82,6 +82,25 @@ def check_setup(cfg: dict) -> int:
     return 0 if all(ok for _, ok, _ in results) else 1
 
 
+def board_dump(cfg: dict, path: str) -> int:
+    """Write the cards of the board (no personal notes) to a Markdown file so they can be reviewed."""
+    b = board_mod.from_env(cfg.get("board", {}))
+    if b is None:
+        _fail("Falta el secret PROJECT_TOKEN o el tablero está desactivado")
+        return 1
+    b.connect()
+    items = [it for it in b.items() if not it.archived]
+    lines = [f"# Tablero {b.title}: {len(items)} tarjetas", ""]
+    for it in sorted(items, key=lambda i: -float(i.values.get("Puntuación") or 0)):
+        v = it.values
+        lines += [f"## {it.title}", f"- Estado: {it.status} · Puntuación: {v.get('Puntuación')} · Ubicación: {v.get('Ubicación')} · Fuente: {v.get('Fuente')}",
+                  f"- Enlace: {v.get('Enlace')}"]
+        lines += [it.body.split("### Notas")[0].strip(), ""]
+    Path(path).write_text("\n".join(lines), encoding="utf-8")
+    log.info("board dump: %d cards written to %s", len(items), path)
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Weekly cloud/DevOps job search")
     parser.add_argument("--config", default="config.yaml")
@@ -90,12 +109,15 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sources", help="comma-separated subset: jobspy,remotive,adzuna")
     parser.add_argument("--check-setup", "--test-email", dest="check_setup", action="store_true",
                         help="only check email, Gemini and the board")
+    parser.add_argument("--board-dump", metavar="FILE", help="write the board's cards to a Markdown file and exit")
     args = parser.parse_args(argv)
 
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     if args.check_setup:
         return check_setup(cfg)
+    if args.board_dump:
+        return board_dump(cfg, args.board_dump)
 
     # Check the email settings before spending 15 minutes searching.
     if not args.dry_run and mailer.missing_settings():
@@ -141,6 +163,13 @@ def main(argv: list[str] | None = None) -> int:
         notes = j.notes
         if score_job(j, rules) is not None:
             j.notes = notes
+    blocked = [j for j in finalists if j.blocked]
+    if blocked:  # the full description shows a requirement Arun cannot meet: skip it and don't offer it again
+        log.info("dropped %d offers that ask for years of experience with a technology", len(blocked))
+        new = [j for j in new if not j.blocked]
+        resurfaced = [j for j in resurfaced if not j.blocked]
+        finalists = new + resurfaced
+        st.setdefault("sent", {}).update({j.key: today.isoformat() for j in blocked})
     enrich.salary_estimates(finalists, cfg.get("salary_estimates", {}))
     try:  # summaries are a bonus: they must never stop the email
         ai.enrich(finalists, cfg.get("ai", {}), cfg.get("ai", {}).get("profile", ""), errors)

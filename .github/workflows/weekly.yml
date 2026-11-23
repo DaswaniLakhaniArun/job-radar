@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "search = normal run · dry-run = report as artifact, no email or board changes · check-setup = check email, Gemini and the board (≈1 min)"
+        description: "search = normal run · dry-run = report as artifact, no email or board changes · check-setup = check email, Gemini and the board (≈1 min) · board-dump = export the board cards as an artifact (≈1 min)"
         type: choice
-        options: [search, dry-run, check-setup]
+        options: [search, dry-run, check-setup, board-dump]
         default: search
 
 permissions:
@@ -57,6 +57,7 @@ jobs:
           case "${{ inputs.mode || 'search' }}" in
             dry-run)    python -m job_radar --dry-run ;;
             check-setup) python -m job_radar --check-setup ;;
+            board-dump) python -m job_radar --board-dump board_dump.md ;;
             *)          python -m job_radar ;;
           esac
 
@@ -68,8 +69,16 @@ jobs:
           path: report.html
           retention-days: 3
 
+      - name: Upload board dump
+        if: ${{ inputs.mode == 'board-dump' }}
+        uses: actions/upload-artifact@v6
+        with:
+          name: board-dump
+          path: board_dump.md
+          retention-days: 1
+
       - name: Save state
-        if: ${{ inputs.mode != 'dry-run' && inputs.mode != 'check-setup' }}
+        if: ${{ inputs.mode != 'dry-run' && inputs.mode != 'check-setup' && inputs.mode != 'board-dump' }}
         run: |
           cp .state/seen.json /tmp/seen.json
           git config user.name "github-actions[bot]"

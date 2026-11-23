@@ -65,6 +65,26 @@ def _years_required(text: str) -> int | None:
     return min(nums) if nums else None
 
 
+_NOT_EXPERIENCE = r"(?!\s*(?:-\s*)?(?:contract|program|programme|internship|placement|term|old|de edad|de contrato|de duracion))"
+_YEARS_NUM = r"(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?-?\s*(?:years?|yrs?|anos?)(?![a-z])" + _NOT_EXPERIENCE
+
+
+def _tech_years(text: str, skills) -> list[tuple[int, str]]:
+    """Offers that ask for years of experience *with a specific technology* ("1+ year of AWS").
+    Arun has months of professional experience, so any such requirement of one year or more is a mismatch."""
+    found: dict[str, int] = {}
+    for skill in skills:
+        sk = re.escape(normalise(skill))
+        after = re.compile(_YEARS_NUM + rf"[^.\n;:]{{0,70}}?(?<![a-z0-9]){sk}(?![a-z0-9])")
+        before = re.compile(rf"(?<![a-z0-9]){sk}(?![a-z0-9])[^.\n;]{{0,40}}?" + _YEARS_NUM)
+        for rx in (after, before):
+            for m in rx.finditer(text):
+                years = int(m.group(1))
+                if 1 <= years < 20:
+                    found[skill] = min(years, found.get(skill, years))
+    return [(y, s) for s, y in found.items()]
+
+
 def score_job(job: Job, rules: dict) -> Job | None:
     """Return the job with score and reasons, or None if it should be dropped."""
     title = normalise(job.title)
@@ -107,6 +127,13 @@ def score_job(job: Job, rules: dict) -> Job | None:
     if years is not None and years > rules.get("max_years_experience", 2):
         score -= min(years - rules.get("max_years_experience", 2), 4)
         reasons.append(f"pide {years}+ años de experiencia")
+
+    job.blocked = False
+    tech = _tech_years(desc, rules["skills"])
+    if tech:
+        job.blocked = True
+        score -= 5
+        reasons.append("pide años de experiencia en: " + ", ".join(f"{s} ({y}+)" for y, s in tech))
 
     langs = _found(rules.get("language_penalties", []), desc)
     if langs:

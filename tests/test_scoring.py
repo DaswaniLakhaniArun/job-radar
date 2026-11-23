@@ -141,3 +141,29 @@ def test_work_mode_from_description_phrases():
 def test_onsite_offers_are_not_dropped():
     j = score_job(job("Junior DevOps Engineer", "AWS, Docker", location="Barcelona"), RULES)
     assert j is not None and j.score >= 4
+
+
+def test_years_with_a_specific_technology_blocks_the_offer():
+    cases = [
+        "Minimum 1 year of experience with AWS",
+        "2+ years working with Kubernetes in production",
+        "AWS: 1+ years of hands-on experience",
+        "Se requiere 1 año de experiencia en AWS",
+        "3 years of hands-on experience in DevOps and Terraform",
+    ]
+    for desc in cases:
+        j = score_job(job("Junior DevOps Engineer", desc), RULES)
+        assert j.blocked, desc
+        assert any("pide años de experiencia en" in r for r in j.reasons)
+
+
+def test_other_year_mentions_do_not_block():
+    cases = [
+        "A 1-year contract working with AWS and Docker",
+        "Paid internship of 6 months. Learn AWS. Founded 10 years ago.",
+        "You must be over 18 years old. We use Terraform.",
+        "1 year of experience in a technical role. AWS is a plus.",
+    ]
+    for desc in cases:
+        j = score_job(job("Junior DevOps Engineer", desc), RULES)
+        assert not j.blocked, desc

@@ -55,6 +55,7 @@ class Item:
     archived: bool
     title: str
     values: dict[str, object] = field(default_factory=dict)
+    body: str = ""
 
     @property
     def status(self) -> str:
@@ -140,7 +141,7 @@ class Board:
         q = """query($p: ID!, $after: String) { node(id: $p) { ... on ProjectV2 {
           items(first: 100, after: $after) { pageInfo { hasNextPage endCursor } nodes {
             id databaseId isArchived
-            content { ... on DraftIssue { title } ... on Issue { title } }
+            content { ... on DraftIssue { title body } ... on Issue { title body } }
             fieldValues(first: 30) { nodes {
               ... on ProjectV2ItemFieldTextValue { text field { ... on ProjectV2FieldCommon { name } } }
               ... on ProjectV2ItemFieldNumberValue { number field { ... on ProjectV2FieldCommon { name } } }
@@ -157,7 +158,8 @@ class Board:
                         continue
                     val = v.get("text", v.get("number", v.get("date", v.get("name"))))
                     values[v["field"]["name"]] = val
-                out.append(Item(n["id"], n.get("databaseId"), n["isArchived"], (n.get("content") or {}).get("title", ""), values))
+                content = n.get("content") or {}
+                out.append(Item(n["id"], n.get("databaseId"), n["isArchived"], content.get("title", ""), values, content.get("body") or ""))
             if not data["pageInfo"]["hasNextPage"]:
                 return out
             after = data["pageInfo"]["endCursor"]
