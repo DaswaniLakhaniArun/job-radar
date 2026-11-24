@@ -31,6 +31,7 @@ Para CADA oferta devuelve un objeto JSON con estas claves, usando SOLO lo que di
 - "requisitos": lista de hasta 4 requisitos clave, muy cortos
 - "a_favor": lista de hasta 3 puntos positivos concretos (formación, mentoría, tecnologías, remoto…)
 - "alertas": lista de hasta 3 señales de alerta concretas (prácticas sin pagar, pide experiencia senior, descripción vaga, intermediaria…). Lista vacía si no hay
+- "anos_experiencia": entero, los años de experiencia profesional que la oferta EXIGE como requisito obligatorio (0 si no pide ninguno, si solo pide estudios o prácticas, o si la experiencia es solo deseable)
 - "valoracion": entero 1-5, calidad de la oferta para alguien junior
 - "encaje": entero 1-5, encaje con el perfil del candidato
 
@@ -61,7 +62,7 @@ def _call(model: str, key: str, prompt: str) -> requests.Response:
             "contents": [{"parts": [{"text": prompt}]}],
             "generationConfig": {"responseMimeType": "application/json", "temperature": 0.2},
         },
-        timeout=90,
+        timeout=150,
     )
 
 
@@ -152,6 +153,14 @@ def apply_to_score(jobs: list[Job]) -> None:
         if fit != 3:
             j.score = round(j.score + (fit - 3) * 0.5, 1)
             j.reasons.append(f"encaje IA {fit}/5")
+        try:
+            years = int(a.get("anos_experiencia") or 0)
+        except (TypeError, ValueError):
+            years = 0
+        if years >= 2 and not j.blocked:  # the regex missed it but the AI read the posting: same rule
+            j.blocked = True
+            j.score = round(j.score - 5, 1)
+            j.reasons.append(f"pide {years}+ años de experiencia (según la IA)")
         if str(a.get("remunerada", "")).strip().lower() == "no":
             j.score = round(j.score - 1, 1)
             j.reasons.append("parece no remunerada")

@@ -167,3 +167,36 @@ def test_other_year_mentions_do_not_block():
     for desc in cases:
         j = score_job(job("Junior DevOps Engineer", desc), RULES)
         assert not j.blocked, desc
+
+
+def test_general_years_of_experience_block_the_offer():
+    blocked = [
+        "Se requieren al menos 2 años de experiencia en sistemas.",
+        "Mínimo dos años de experiencia en entornos cloud.",
+        "2+ years of experience in DevOps or infrastructure.",
+        "Más de 3 años de experiencia demostrable.",
+        "Experiencia de 3-4 años en automatización.",
+    ]
+    for desc in blocked:
+        j = score_job(job("Junior DevOps Engineer", desc), RULES)
+        assert j.blocked, desc
+        assert any("años de experiencia" in r for r in j.reasons)
+
+
+def test_small_or_optional_experience_does_not_block():
+    fine = [
+        "Experiencia de 6 meses a 1,5 años en cloud.",
+        "0-2 años de experiencia o recién graduado.",
+        "Se valorarán 2 años de experiencia previa.",
+        "Contrato temporal de 2 años. Prácticas en AWS.",
+        "Empresa fundada hace 10 años, con experiencia en Cloud.",
+    ]
+    for desc in fine:
+        j = score_job(job("Junior DevOps Engineer", desc + " " * 250), RULES)
+        assert not j.blocked, desc
+
+
+def test_one_year_of_experience_only_lowers_the_score():
+    base = score_job(job("Junior DevOps Engineer", "Learn Docker."), RULES)
+    one = score_job(job("Junior DevOps Engineer", "Learn Docker. 1 year of experience in IT."), RULES)
+    assert not one.blocked and one.score < base.score

@@ -105,6 +105,54 @@ def board_dump(cfg: dict, path: str) -> int:
     return 0
 
 
+def board_clean(cfg: dict, apply: bool) -> int:
+    """Move the cards still marked "Nueva" whose offer asks for experience Arun doesn't have to "No me interesa"."""
+    from .models import Job
+    from .scoring import experience_problems
+
+    b = board_mod.from_env(cfg.get("board", {}))
+    if b is None:
+        _fail("Falta el secret PROJECT_TOKEN o el tablero está desactivado")
+        return 1
+    b.connect()
+    skills = cfg["scoring"]["skills"]
+    cards = [it for it in b.items() if not it.archived and it.status == board_mod.NEW]
+    texts: dict[str, str] = {}
+    to_fetch: list[tuple[board_mod.Item, Job]] = []
+    for it in cards:
+        body = it.body.split("### Notas")[0]
+        texts[it.id] = body
+        if "**Requisitos**" not in body and str(it.values.get("Fuente")) == "linkedin":  # no summary on the card: read the offer
+            to_fetch.append((it, Job(source="linkedin", title=it.title, company="", location="", url=str(it.values.get("Enlace") or ""))))
+    errors: list[str] = []
+    enrich.linkedin_descriptions([j for _, j in to_fetch], errors, limit=60)
+    for it, j in to_fetch:
+        texts[it.id] += "\n" + j.description
+    moved = 0
+    for it in cards:
+        problems = experience_problems(texts[it.id], skills)
+        if not problems:
+            continue
+        log.info("%s %s · %s", "MOVER" if apply else "movería", it.title[:70], "; ".join(problems))
+        if apply:
+            b.set_status(it.id, board_mod.NOT_INTERESTED)
+        moved += 1
+    log.info("%d de %d tarjetas «Nueva» pedían experiencia que no tienes (%s). Sin descripción: %d. Avisos: %s",
+             moved, len(cards), "movidas" if apply else "solo simulación", sum(1 for it, j in to_fetch if not j.description), errors[:3])
+    return 0
+
+
+def _drop_blocked(new, resurfaced, st, today):
+    """Offers whose text shows a requirement Arun cannot meet (years of experience) are skipped and not offered again."""
+    blocked = [j for j in new + resurfaced if j.blocked]
+    if blocked:
+        log.info("dropped %d offers that ask for years of experience: %s", len(blocked), "; ".join(j.title[:40] for j in blocked))
+        new = [j for j in new if not j.blocked]
+        resurfaced = [j for j in resurfaced if not j.blocked]
+        st.setdefault("sent", {}).update({j.key: today.isoformat() for j in blocked})
+    return new, resurfaced, new + resurfaced
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Weekly cloud/DevOps job search")
     parser.add_argument("--config", default="config.yaml")
@@ -113,6 +161,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--sources", help="comma-separated subset: jobspy,remotive,adzuna")
     parser.add_argument("--check-setup", "--test-email", dest="check_setup", action="store_true",
                         help="only check email, Gemini and the board")
+    parser.add_argument("--board-clean", choices=["dry", "apply"], help="move «Nueva» cards that ask for years of experience to «No me interesa»")
     parser.add_argument("--board-dump", metavar="FILE", help="write the board's cards to a Markdown file and exit")
     args = parser.parse_args(argv)
 
@@ -120,6 +169,8 @@ def main(argv: list[str] | None = None) -> int:
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     if args.check_setup:
         return check_setup(cfg)
+    if args.board_clean:
+        return board_clean(cfg, args.board_clean == "apply")
     if args.board_dump:
         return board_dump(cfg, args.board_dump)
 
@@ -167,17 +218,12 @@ def main(argv: list[str] | None = None) -> int:
         notes = j.notes
         if score_job(j, rules) is not None:
             j.notes = notes
-    blocked = [j for j in finalists if j.blocked]
-    if blocked:  # the full description shows a requirement Arun cannot meet: skip it and don't offer it again
-        log.info("dropped %d offers that ask for years of experience with a technology", len(blocked))
-        new = [j for j in new if not j.blocked]
-        resurfaced = [j for j in resurfaced if not j.blocked]
-        finalists = new + resurfaced
-        st.setdefault("sent", {}).update({j.key: today.isoformat() for j in blocked})
+    new, resurfaced, finalists = _drop_blocked(new, resurfaced, st, today)
     enrich.salary_estimates(finalists, cfg.get("salary_estimates", {}))
     try:  # summaries are a bonus: they must never stop the email
         ai.enrich(finalists, cfg.get("ai", {}), cfg.get("ai", {}).get("profile", ""), errors)
         ai.apply_to_score(finalists)
+        new, resurfaced, finalists = _drop_blocked(new, resurfaced, st, today)  # the AI may have found more
     except Exception as exc:
         errors.append(f"gemini: {type(exc).__name__}, las ofertas van sin resumen")
     new.sort(key=lambda j: (j.category != "internship", -j.score))

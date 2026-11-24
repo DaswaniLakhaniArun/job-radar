@@ -65,8 +65,38 @@ def _years_required(text: str) -> int | None:
     return min(nums) if nums else None
 
 
-_NOT_EXPERIENCE = r"(?!\s*(?:-\s*)?(?:contract|program|programme|internship|placement|term|old|de edad|de contrato|de duracion))"
-_YEARS_NUM = r"(\d{1,2})\s*\+?\s*(?:-\s*\d{1,2}\s*)?-?\s*(?:years?|yrs?|anos?)(?![a-z])" + _NOT_EXPERIENCE
+_NOT_EXPERIENCE = r"(?!\s*(?:-\s*)?(?:contract|program|programme|internship|placement|term|old|de edad|de contrato|de duracion|de beca|de practicas))"
+_WORD_NUM = {"un": 1, "uno": 1, "una": 1, "one": 1, "dos": 2, "two": 2, "tres": 3, "three": 3, "cuatro": 4, "four": 4,
+             "cinco": 5, "five": 5, "seis": 6, "six": 6, "siete": 7, "seven": 7, "ocho": 8, "eight": 8}
+_NUM = r"(\d{1,2}|" + "|".join(_WORD_NUM) + r")"
+_YEARS_NUM = r"(?<![\d,.])" + _NUM + r"\s*\+?\s*(?:(?:-|a|to)\s*\d{1,2}\s*)?-?\s*(?:years?|yrs?|anos?)(?![a-z])" + _NOT_EXPERIENCE
+_SOFT = re.compile(r"\b(deseable|valorable|valorara|valorarar|preferible|preferred|nice to have|bonus|plus|ideal|opcional|optional|not required|no es necesari)")
+_NOT_ABOUT_PEOPLE = re.compile(r"hace|fundad|founded|since")
+_EXPERIENCE_WORD = re.compile(r"experien|experience|pide|exige|minimo|at least|required|requires|mas de|more than")
+
+
+def _to_int(token: str) -> int:
+    return int(token) if token.isdigit() else _WORD_NUM[token]
+
+
+def _experience_years(text: str) -> tuple[int, int]:
+    """Years of experience asked for in general (not tied to a technology).
+    Returns (required, optional): the highest lower bound found in "must have" sentences and in "nice to have" ones."""
+    hard = soft = 0
+    for sentence in re.split(r"[.\n;]", text):
+        if not _EXPERIENCE_WORD.search(sentence):
+            continue
+        for m in re.finditer(_YEARS_NUM, sentence):
+            years = _to_int(m.group(1))
+            if not 1 <= years < 20:
+                continue
+            if _NOT_ABOUT_PEOPLE.search(sentence[max(0, m.start() - 30):m.start()]):  # "hace 10 años", "founded 10 years ago"
+                continue
+            if _SOFT.search(sentence):
+                soft = max(soft, years)
+            else:
+                hard = max(hard, years)
+    return hard, soft
 
 
 def _tech_years(text: str, skills) -> list[tuple[int, str]]:
@@ -79,10 +109,25 @@ def _tech_years(text: str, skills) -> list[tuple[int, str]]:
         before = re.compile(rf"(?<![a-z0-9]){sk}(?![a-z0-9])[^.\n;]{{0,40}}?" + _YEARS_NUM)
         for rx in (after, before):
             for m in rx.finditer(text):
-                years = int(m.group(1))
+                if _SOFT.search(m.group(0)):
+                    continue
+                years = _to_int(m.group(1))
                 if 1 <= years < 20:
                     found[skill] = min(years, found.get(skill, years))
     return [(y, s) for s, y in found.items()]
+
+
+def experience_problems(text: str, skills) -> list[str]:
+    """Reasons why the text asks for experience Arun doesn't have (empty list = nothing found)."""
+    text = normalise(text)
+    out: list[str] = []
+    tech = _tech_years(text, skills)
+    if tech:
+        out.append("pide años de experiencia en: " + ", ".join(f"{s} ({y}+)" for y, s in tech))
+    hard, _ = _experience_years(text)
+    if hard >= 2 and not tech:
+        out.append(f"pide {hard}+ años de experiencia")
+    return out
 
 
 def score_job(job: Job, rules: dict) -> Job | None:
@@ -123,17 +168,19 @@ def score_job(job: Job, rules: dict) -> Job | None:
     cv = {normalise(s) for s in rules.get("cv_skills", [])}
     job.missing_skills = [s for s in skills if normalise(s) not in cv]
 
-    years = _years_required(desc)
-    if years is not None and years > rules.get("max_years_experience", 2):
-        score -= min(years - rules.get("max_years_experience", 2), 4)
-        reasons.append(f"pide {years}+ años de experiencia")
-
     job.blocked = False
-    tech = _tech_years(desc, rules["skills"])
-    if tech:
+    problems = experience_problems(desc, rules["skills"])
+    if problems:
         job.blocked = True
         score -= 5
-        reasons.append("pide años de experiencia en: " + ", ".join(f"{s} ({y}+)" for y, s in tech))
+        reasons.extend(problems)
+    else:
+        one_year, _ = _experience_years(normalise(desc))
+        if one_year == 1:  # close to what Arun has (about nine months): lower it, don't drop it
+            score -= 1.5
+            reasons.append("pide 1 año de experiencia")
+    if not problems and len(desc) < 200:
+        reasons.append("sin descripción completa: mira los requisitos en el anuncio")
 
     langs = _found(rules.get("language_penalties", []), desc)
     if langs:

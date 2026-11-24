@@ -215,6 +215,9 @@ class Board:
     def set_text(self, item_id: str, field_name: str, text: str) -> None:
         self._set_many(item_id, [(field_name, {"text": text})])
 
+    def set_status(self, item_id: str, status: str) -> None:
+        self._set_many(item_id, [("Status", {"singleSelectOptionId": self._option("Status", status)})])
+
     def archive(self, item_id: str) -> None:
         self.gql("""mutation($p: ID!, $i: ID!) { archiveProjectV2Item(input: {projectId: $p, itemId: $i}) { clientMutationId } }""",
                  {"p": self.id, "i": item_id})
