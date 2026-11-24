@@ -20,6 +20,29 @@ LINKEDIN_HEADERS = {
 }
 
 
+_CLOSED = re.compile(
+    r"no longer accepting applications|no longer available|job (?:has )?expired|position (?:has been|is) (?:filled|closed)|"
+    r"ya no (?:se )?acepta|no se aceptan (?:mas )?solicitudes|oferta (?:ya )?no (?:esta )?disponible|oferta (?:finalizada|cerrada|caducada)|"
+    r"vacante (?:cerrada|cubierta)|closed-job|this job is closed")
+
+
+def looks_closed(html: str) -> bool:
+    return bool(_CLOSED.search(normalise(html)))
+
+
+def check_open(url: str) -> bool | None:
+    """True if the page says the offer is gone (or answers 404/410), False if it looks live, None if we couldn't tell."""
+    try:
+        r = requests.get(url, headers=LINKEDIN_HEADERS, timeout=30, allow_redirects=True)
+    except Exception:
+        return None
+    if r.status_code in (404, 410):
+        return True
+    if r.status_code != 200:
+        return None
+    return looks_closed(r.text)
+
+
 def company_info(finalists: list[Job], everything: list[Job]) -> None:
     """Indeed returns the company rating, size and industry; copy them to offers of the same company from other boards."""
     known: dict[str, Job] = {}
@@ -57,6 +80,8 @@ def linkedin_descriptions(finalists: list[Job], errors: list[str], limit: int = 
                     break
                 time.sleep(20)
                 continue
+            if r.status_code in (404, 410) or looks_closed(r.text):
+                j.closed = True
             soup = BeautifulSoup(r.text, "html.parser")
             div = soup.find("div", class_="show-more-less-html__markup")
             if div:

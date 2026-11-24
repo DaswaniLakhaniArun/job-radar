@@ -47,6 +47,7 @@ class Job:
     score: float = 0.0
     category: str = ""  # "internship" or "junior"
     work_mode: str = ""  # "remote", "hybrid" or "onsite"
+    closed: bool = False  # the posting says it no longer accepts applications
     blocked: bool = False  # asks for years of experience with a technology Arun does not have
     reasons: list[str] = field(default_factory=list)
     missing_skills: list[str] = field(default_factory=list)

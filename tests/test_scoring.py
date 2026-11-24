@@ -200,3 +200,10 @@ def test_one_year_of_experience_only_lowers_the_score():
     base = score_job(job("Junior DevOps Engineer", "Learn Docker."), RULES)
     one = score_job(job("Junior DevOps Engineer", "Learn Docker. 1 year of experience in IT."), RULES)
     assert not one.blocked and one.score < base.score
+
+
+def test_closed_postings_are_recognised():
+    from job_radar.enrich import looks_closed
+    assert looks_closed("<figcaption>No longer accepting applications</figcaption>")
+    assert looks_closed("Esta oferta ya no está disponible")
+    assert not looks_closed("Estamos buscando un DevOps junior. Envía tu CV.")

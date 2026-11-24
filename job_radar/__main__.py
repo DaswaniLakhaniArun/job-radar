@@ -4,7 +4,9 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import random
 import smtplib
+import time
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -120,7 +122,7 @@ def board_clean(cfg: dict, apply: bool) -> int:
     texts: dict[str, str] = {}
     to_fetch: list[tuple[board_mod.Item, Job]] = []
     for it in cards:
-        body = it.body.split("### Notas")[0]
+        body = it.body.split("### Notas")[0].split("_Por qué aparece")[0]  # the footer repeats older scoring notes
         texts[it.id] = body
         if "**Requisitos**" not in body and str(it.values.get("Fuente")) == "linkedin":  # no summary on the card: read the offer
             to_fetch.append((it, Job(source="linkedin", title=it.title, company="", location="", url=str(it.values.get("Enlace") or ""))))
@@ -129,31 +131,43 @@ def board_clean(cfg: dict, apply: bool) -> int:
     for it, j in to_fetch:
         texts[it.id] += "\n" + j.description
     moved = 0
-    for it in cards:
+    closed_n = 0
+    for n, it in enumerate(cards):
         problems = experience_problems(texts[it.id], skills)
+        closed = None
+        url = str(it.values.get("Enlace") or "")
+        fetched = next((j for i2, j in to_fetch if i2.id == it.id), None)
+        if fetched is not None:
+            closed = fetched.closed or None
+        elif url and not problems:
+            closed = enrich.check_open(url) or None
+            time.sleep(random.uniform(2, 4))
+        if closed:
+            problems = problems + ["la oferta ya no está disponible"]
+            closed_n += 1
         if not problems:
             continue
         import re
         from .models import normalise
         from .scoring import _YEARS_NUM
         t = normalise(texts[it.id])
-        snippets = [t[max(0, m.start() - 60):m.end() + 60].replace("\n", " ") for m in re.finditer(_YEARS_NUM, t)][:3]
-        log.info("%s %s · %s · …%s…", "MOVER" if apply else "movería", it.title[:70], "; ".join(problems)[:80], " | ".join(snippets))
+        snippets = [t[max(0, m.start() - 60):m.end() + 60].replace("\n", " ") for m in re.finditer(_YEARS_NUM, t)][:2]
+        log.info("%s %s · %s · …%s…", "MOVER" if apply else "movería", it.title[:70], "; ".join(problems)[:90], " | ".join(snippets))
         if apply:
             b.set_status(it.id, board_mod.NOT_INTERESTED)
         moved += 1
-    log.info("%d de %d tarjetas «Nueva» pedían experiencia que no tienes (%s). Sin descripción: %d. Avisos: %s",
-             moved, len(cards), "movidas" if apply else "solo simulación", sum(1 for it, j in to_fetch if not j.description), errors[:3])
+    log.info("%d de %d tarjetas «Nueva» no valen (experiencia que no tienes u oferta cerrada: %d cerradas) (%s). Sin descripción: %d. Avisos: %s",
+             moved, len(cards), closed_n, "movidas" if apply else "solo simulación", sum(1 for it, j in to_fetch if not j.description), errors[:3])
     return 0
 
 
 def _drop_blocked(new, resurfaced, st, today):
     """Offers whose text shows a requirement Arun cannot meet (years of experience) are skipped and not offered again."""
-    blocked = [j for j in new + resurfaced if j.blocked]
+    blocked = [j for j in new + resurfaced if j.blocked or j.closed]
     if blocked:
-        log.info("dropped %d offers that ask for years of experience: %s", len(blocked), "; ".join(j.title[:40] for j in blocked))
-        new = [j for j in new if not j.blocked]
-        resurfaced = [j for j in resurfaced if not j.blocked]
+        log.info("dropped %d offers (experience we lack, or closed): %s", len(blocked), "; ".join(j.title[:40] for j in blocked))
+        new = [j for j in new if not (j.blocked or j.closed)]
+        resurfaced = [j for j in resurfaced if not (j.blocked or j.closed)]
         st.setdefault("sent", {}).update({j.key: today.isoformat() for j in blocked})
     return new, resurfaced, new + resurfaced
 
