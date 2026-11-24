@@ -133,7 +133,12 @@ def board_clean(cfg: dict, apply: bool) -> int:
         problems = experience_problems(texts[it.id], skills)
         if not problems:
             continue
-        log.info("%s %s · %s", "MOVER" if apply else "movería", it.title[:70], "; ".join(problems))
+        import re
+        from .models import normalise
+        from .scoring import _YEARS_NUM
+        t = normalise(texts[it.id])
+        snippets = [t[max(0, m.start() - 60):m.end() + 60].replace("\n", " ") for m in re.finditer(_YEARS_NUM, t)][:3]
+        log.info("%s %s · %s · …%s…", "MOVER" if apply else "movería", it.title[:70], "; ".join(problems)[:80], " | ".join(snippets))
         if apply:
             b.set_status(it.id, board_mod.NOT_INTERESTED)
         moved += 1
